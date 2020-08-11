@@ -8,6 +8,8 @@ extern rgblight_config_t rgblight_config;
 
 extern uint8_t is_master;
 
+static uint32_t oled_timer = 0;
+
 // Each layer gets a name for readability, which is then used in the keymap matrix below.
 // The underscores don't mean anything - you can have a layer called STUFF or any other name.
 // Layer names don't all need to be of the same length, obviously, and you can also skip them
@@ -27,9 +29,9 @@ enum macro_keycodes {
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
   [_QWERTY] = LAYOUT( \
   //,-----------------------------------------------------.                    ,-----------------------------------------------------.
-    GRAVE_ESC,    KC_Q,    KC_W,   KC_E,   KC_R,   KC_T,                            KC_Y,    KC_U,    KC_I,    KC_O,    KC_P, KC_BSPC,\
+       KC_TAB,    KC_Q,    KC_W,   KC_E,   KC_R,   KC_T,                            KC_Y,    KC_U,    KC_I,    KC_O,    KC_P, KC_BSPC,\
   //|--------+--------+--------+--------+--------+--------|                    |--------+--------+--------+--------+--------+--------|
-LCTL_T(KC_ESC),    KC_A,    KC_S,   KC_D,   KC_F,   KC_G,                            KC_H,    KC_J,    KC_K,    KC_L, KC_SCLN, KC_QUOT,\
+LCTL_T(GRAVE_ESC),    KC_A,    KC_S,   KC_D,   KC_F,   KC_G,                            KC_H,    KC_J,    KC_K,    KC_L, KC_SCLN, KC_QUOT,\
   //|--------+--------+--------+--------+--------+--------|                    |--------+--------+--------+--------+--------+--------|
       KC_LSFT,    KC_Z,    KC_X,    KC_C,    KC_V,    KC_B,                         KC_N,    KC_M, KC_COMM,  KC_DOT, KC_SLSH, KC_RSFT,\
   //|--------+--------+--------+--------+--------+--------+--------|  |--------+--------+--------+--------+--------+--------+--------|
@@ -40,9 +42,9 @@ LCTL_T(KC_ESC),    KC_A,    KC_S,   KC_D,   KC_F,   KC_G,                       
 
   [_LOWER] = LAYOUT( \
   //,-----------------------------------------------------.                    ,-----------------------------------------------------.
- LGUI(KC_GRV),    KC_1,    KC_2,    KC_3,    KC_4,    KC_5,                         KC_6,    KC_7,    KC_8,    KC_9,    KC_0, KC_BSPC,\
+       KC_TAB,    KC_1,    KC_2,    KC_3,    KC_4,    KC_5,                         KC_6,    KC_7,    KC_8,    KC_9,    KC_0, KC_BSPC,\
   //|--------+--------+--------+--------+--------+--------|                    |--------+--------+--------+--------+--------+--------|
-LCTL_T(KC_ESC),   KC_NO,   KC_NO,   KC_NO,   KC_NO,   KC_NO,                      KC_LEFT, KC_DOWN,   KC_UP, KC_RGHT,   KC_NO,   KC_NO,\
+LCTL_T(GRAVE_ESC),   KC_NO,   KC_NO,   KC_NO,   KC_NO,   KC_NO,                      KC_LEFT, KC_DOWN,   KC_UP, KC_RGHT,   KC_NO,   KC_NO,\
   //|--------+--------+--------+--------+--------+--------|                    |--------+--------+--------+--------+--------+--------|
       KC_LSFT,   KC_NO,   KC_NO,   KC_NO,   KC_NO,   KC_NO,                      KC_MPLY, KC_MUTE, KC_VOLD, KC_VOLU,   KC_NO, KC_RSFT,\
   //|--------+--------+--------+--------+--------+--------+--------|  |--------+--------+--------+--------+--------+--------+--------|
@@ -55,7 +57,7 @@ LCTL_T(KC_ESC),   KC_NO,   KC_NO,   KC_NO,   KC_NO,   KC_NO,                    
   //,-----------------------------------------------------.                    ,-----------------------------------------------------.
        KC_TAB, KC_EXLM,   KC_AT, KC_HASH,  KC_DLR, KC_PERC,                      KC_CIRC, KC_AMPR, KC_ASTR, KC_LPRN, KC_RPRN, KC_BSPC,\
   //|--------+--------+--------+--------+--------+--------|                    |--------+--------+--------+--------+--------+--------|
-LCTL_T(KC_ESC),   KC_NO,   KC_NO,   KC_NO,   KC_NO,   KC_NO,                      KC_MINS,  KC_EQL, KC_LCBR, KC_RCBR, KC_PIPE,  KC_GRV,\
+LCTL_T(GRAVE_ESC),   KC_NO,   KC_NO,   KC_NO,   KC_NO,   KC_NO,                      KC_MINS,  KC_EQL, KC_LCBR, KC_RCBR, KC_PIPE,  KC_GRV,\
   //|--------+--------+--------+--------+--------+--------|                    |--------+--------+--------+--------+--------+--------|
       KC_LSFT,   KC_NO,   KC_NO,   KC_NO,   KC_NO,   KC_NO,                      KC_UNDS, KC_PLUS, KC_LBRC, KC_RBRC, KC_BSLS, KC_TILD,\
   //|--------+--------+--------+--------+--------+--------+--------|  |--------+--------+--------+--------+--------+--------+--------|
@@ -66,19 +68,21 @@ LCTL_T(KC_ESC),   KC_NO,   KC_NO,   KC_NO,   KC_NO,   KC_NO,                    
 };
 
 
-// bool process_record_user_oled(uint16_t keycode, keyrecord_t *record) {
-//     if (record->event.pressed) {
-// #ifdef OLED_DRIVER_ENABLE
-//         oled_timer = timer_read32();
-// #endif
-// #ifndef SPLIT_KEYBOARD
-//         if (keycode == RESET && !is_master) {
-//             return false;
-//         }
-// #endif
-//     }
-//     return true;
-// }
+bool process_record_user(uint16_t keycode, keyrecord_t *record) {
+    switch (keycode) {
+      // Handle RGB Changes sans eeprom - necessary due to the layer dependent RGB color
+      // changes in marrix_scan_user
+
+      default:
+          // Use process_record_keymap to reset timer on all other keypresses to awaken from idle.
+          if (record->event.pressed) {
+              #ifdef OLED_DRIVER_ENABLE
+                  oled_timer = timer_read32();
+              #endif
+          }
+          return true;
+    }
+}
 
 #ifdef OLED_DRIVER_ENABLE
 oled_rotation_t oled_init_user(oled_rotation_t rotation) { return OLED_ROTATION_270; }
@@ -124,10 +128,17 @@ void render_status_secondary(void) {
 }
 
 void oled_task_user(void) {
-    if (is_master) {
-        render_status_main();  // Renders the current keyboard state (layer, lock, caps, scroll, etc)
-    } else {
-        render_status_secondary();
+    if (timer_elapsed32(oled_timer) > 180000) {
+        oled_off();
+        return;
+    }
+    else {
+        oled_on();
+        if (is_master) {
+            render_status_main();  // Renders the current keyboard state (layer, lock, caps, scroll, etc)
+        } else {
+            render_status_secondary();
+        }
     }
 }
 
