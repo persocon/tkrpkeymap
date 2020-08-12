@@ -26,12 +26,16 @@ enum macro_keycodes {
   KC_SAMPLEMACRO,
 };
 
+enum custom_keycodes {
+    TAB_ESC = SAFE_RANGE,
+};
+
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
   [_QWERTY] = LAYOUT( \
   //,-----------------------------------------------------.                    ,-----------------------------------------------------.
-       KC_TAB,    KC_Q,    KC_W,   KC_E,   KC_R,   KC_T,                            KC_Y,    KC_U,    KC_I,    KC_O,    KC_P, KC_BSPC,\
+       TAB_ESC,    KC_Q,    KC_W,   KC_E,   KC_R,   KC_T,                            KC_Y,    KC_U,    KC_I,    KC_O,    KC_P, KC_BSPC,\
   //|--------+--------+--------+--------+--------+--------|                    |--------+--------+--------+--------+--------+--------|
-LCTL_T(GRAVE_ESC),    KC_A,    KC_S,   KC_D,   KC_F,   KC_G,                            KC_H,    KC_J,    KC_K,    KC_L, KC_SCLN, KC_QUOT,\
+LCTL_T(KC_GRAVE),    KC_A,    KC_S,   KC_D,   KC_F,   KC_G,                            KC_H,    KC_J,    KC_K,    KC_L, KC_SCLN, KC_QUOT,\
   //|--------+--------+--------+--------+--------+--------|                    |--------+--------+--------+--------+--------+--------|
       KC_LSFT,    KC_Z,    KC_X,    KC_C,    KC_V,    KC_B,                         KC_N,    KC_M, KC_COMM,  KC_DOT, KC_SLSH, KC_RSFT,\
   //|--------+--------+--------+--------+--------+--------+--------|  |--------+--------+--------+--------+--------+--------+--------|
@@ -42,9 +46,9 @@ LCTL_T(GRAVE_ESC),    KC_A,    KC_S,   KC_D,   KC_F,   KC_G,                    
 
   [_LOWER] = LAYOUT( \
   //,-----------------------------------------------------.                    ,-----------------------------------------------------.
-       KC_TAB,    KC_1,    KC_2,    KC_3,    KC_4,    KC_5,                         KC_6,    KC_7,    KC_8,    KC_9,    KC_0, KC_BSPC,\
+       TAB_ESC,    KC_1,    KC_2,    KC_3,    KC_4,    KC_5,                         KC_6,    KC_7,    KC_8,    KC_9,    KC_0, KC_BSPC,\
   //|--------+--------+--------+--------+--------+--------|                    |--------+--------+--------+--------+--------+--------|
-LCTL_T(GRAVE_ESC),   KC_NO,   KC_NO,   KC_NO,   KC_NO,   KC_NO,                      KC_LEFT, KC_DOWN,   KC_UP, KC_RGHT,   KC_NO,   KC_NO,\
+LCTL_T(KC_GRAVE),   KC_NO,   KC_NO,   KC_NO,   KC_NO,   KC_NO,                      KC_LEFT, KC_DOWN,   KC_UP, KC_RGHT,   KC_NO,   KC_NO,\
   //|--------+--------+--------+--------+--------+--------|                    |--------+--------+--------+--------+--------+--------|
       KC_LSFT,   KC_NO,   KC_NO,   KC_NO,   KC_NO,   KC_NO,                      KC_MPLY, KC_MUTE, KC_VOLD, KC_VOLU,   KC_NO, KC_RSFT,\
   //|--------+--------+--------+--------+--------+--------+--------|  |--------+--------+--------+--------+--------+--------+--------|
@@ -55,9 +59,9 @@ LCTL_T(GRAVE_ESC),   KC_NO,   KC_NO,   KC_NO,   KC_NO,   KC_NO,                 
 
   [_RAISE] = LAYOUT( \
   //,-----------------------------------------------------.                    ,-----------------------------------------------------.
-       KC_TAB, KC_EXLM,   KC_AT, KC_HASH,  KC_DLR, KC_PERC,                      KC_CIRC, KC_AMPR, KC_ASTR, KC_LPRN, KC_RPRN, KC_BSPC,\
+       TAB_ESC, KC_EXLM,   KC_AT, KC_HASH,  KC_DLR, KC_PERC,                      KC_CIRC, KC_AMPR, KC_ASTR, KC_LPRN, KC_RPRN, KC_BSPC,\
   //|--------+--------+--------+--------+--------+--------|                    |--------+--------+--------+--------+--------+--------|
-LCTL_T(GRAVE_ESC),   KC_NO,   KC_NO,   KC_NO,   KC_NO,   KC_NO,                      KC_MINS,  KC_EQL, KC_LCBR, KC_RCBR, KC_PIPE,  KC_GRV,\
+LCTL_T(KC_GRAVE),   KC_NO,   KC_NO,   KC_NO,   KC_NO,   KC_NO,                      KC_MINS,  KC_EQL, KC_LCBR, KC_RCBR, KC_PIPE,  KC_GRV,\
   //|--------+--------+--------+--------+--------+--------|                    |--------+--------+--------+--------+--------+--------|
       KC_LSFT,   KC_NO,   KC_NO,   KC_NO,   KC_NO,   KC_NO,                      KC_UNDS, KC_PLUS, KC_LBRC, KC_RBRC, KC_BSLS, KC_TILD,\
   //|--------+--------+--------+--------+--------+--------+--------|  |--------+--------+--------+--------+--------+--------+--------|
@@ -67,21 +71,39 @@ LCTL_T(GRAVE_ESC),   KC_NO,   KC_NO,   KC_NO,   KC_NO,   KC_NO,                 
   ),
 };
 
+static bool bsesc_mods = false;
 
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     switch (keycode) {
       // Handle RGB Changes sans eeprom - necessary due to the layer dependent RGB color
       // changes in marrix_scan_user
-
-      default:
-          // Use process_record_keymap to reset timer on all other keypresses to awaken from idle.
-          if (record->event.pressed) {
-              #ifdef OLED_DRIVER_ENABLE
-                  oled_timer = timer_read32();
-              #endif
-          }
-          return true;
+        case TAB_ESC: {
+            uint8_t kc = KC_TAB;
+            if (record->event.pressed) {
+                if (keyboard_report->mods & MOD_MASK_SHIFT) {
+                    kc = KC_ESC;
+                }
+                register_code(kc);
+                bsesc_mods = keyboard_report->mods;
+            }
+            else {
+                if (bsesc_mods & MOD_MASK_SHIFT) {
+                    kc = KC_ESC;
+                }
+                unregister_code(kc);
+            }
+            break;
+        }
+        default: {
+            // Use process_record_keymap to reset timer on all other keypresses to awaken from idle.
+            if (record->event.pressed) {
+                #ifdef OLED_DRIVER_ENABLE
+                    oled_timer = timer_read32();
+                #endif
+            }
+        }
     }
+    return true;
 }
 
 #ifdef OLED_DRIVER_ENABLE
